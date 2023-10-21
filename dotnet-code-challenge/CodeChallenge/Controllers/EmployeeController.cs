@@ -15,11 +15,13 @@ namespace CodeChallenge.Controllers
     {
         private readonly ILogger _logger;
         private readonly IEmployeeService _employeeService;
+        private readonly IReportingStructureSevice _reportingStructureSevice;
 
-        public EmployeeController(ILogger<EmployeeController> logger, IEmployeeService employeeService)
+        public EmployeeController(ILogger<EmployeeController> logger, IEmployeeService employeeService, IReportingStructureSevice reportingStructureSevice)
         {
             _logger = logger;
             _employeeService = employeeService;
+            _reportingStructureSevice = reportingStructureSevice;
         }
 
         [HttpPost]
@@ -57,6 +59,53 @@ namespace CodeChallenge.Controllers
             _employeeService.Replace(existingEmployee, newEmployee);
 
             return Ok(newEmployee);
+        }
+
+        //Create new GET Endpoint within existing EmployeeController to return the ReportingStructure for a given EmployeeID
+        [HttpGet("getReportingStructurByEmployeeID/{id}")]
+        public IActionResult GetReportingStructurByEmployeeID(String id)
+        {
+            _logger.LogDebug($"Received GetReportingStructurByEmployeeID get request for '{id}'");
+
+            //Grab employee if they exist
+            var employee = _employeeService.GetById(id);
+
+            if (employee == null)
+                return NotFound();
+
+            //Create a new ReportingStructure object and populate it
+            ReportingStructure reportingStructure = _reportingStructureSevice.GetByEmployee(employee);
+
+            return Ok(reportingStructure);
+        }
+
+        //New GET endpoint to grab compensation data by employeeID
+        [HttpGet("getCompensationById/{id}")]
+        public IActionResult GetCompensationById(String id)
+        {
+            _logger.LogDebug($"Recieved GetCompensationById update request for '{id}'");
+
+            Compensation compensation = _employeeService.GetByIdWithCompensation(id);
+            if (compensation == null)
+                return NotFound();
+
+            return Ok(compensation);
+        }
+
+        //New POST endpoint to add Compensation for an employeeID
+        [HttpPost("addNewCompensation/{id}")]
+        public IActionResult AddNewCompensation(String id, [FromForm]Compensation compensation)
+        {
+            _logger.LogDebug($"Recieved AddNewCompensation post request for '{id}'");
+
+            var employee = _employeeService.GetById(id);
+            if (employee == null)
+                return NotFound();
+
+            compensation.employee = employee;
+            var returnComp = _employeeService.AddNewCompensation(compensation);
+
+            return Ok(returnComp);
         }
     }
 }
